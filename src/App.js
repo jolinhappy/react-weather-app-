@@ -6,6 +6,7 @@ import { ReactComponent as RainIcon } from './images/rain.svg';
 import { ReactComponent as RefreshIcon } from './images/refresh.svg';
 
 import { ThemeProvider } from '@emotion/react';
+import dayjs from 'dayjs';
 
 const theme = {
   light: {
@@ -105,37 +106,59 @@ const DayCloudy = styled(DayCloudyIcon)`
   flex-basis: 30%;
 `;
 
-const Refresh = styled(RefreshIcon)`
-  width: 15px;
-  height: 15px;
+const Refresh = styled.div`
   position: absolute;
   right: 15px;
   bottom: 15px;
-  cursor: pointer;
-  color: ${({ theme }) => theme.textColor};
-`;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: flex-end;
+  color: color: ${({ theme }) => theme.textColor};
+  svg {
+    width: 15px;
+    height: 15px;
+    margin-left: 10px;
+    cursor: pointer;
+    animation: rotate infinite 1.5s linear;
+    animation-duration: ${({ isLoading }) => isLoading ? '1.5s' : '0s'}
+  }`
 
 function App() {
-  const [currnetTheme, setCurrentTheme] = useState('light');
+  const [currentTheme, setCurrentTheme] = useState('light');
+  const [currentWeather, setCurrentWeather] = useState({
+    locationName: '臺北市',
+    description: '多雲時晴',
+    windSpeed: 1.1,
+    temperature: 22.9,
+    rainPossibility: 48.3,
+    observationTime: '2020-1201 22:10:00',
+  });
   return (
-    <ThemeProvider theme={theme[currnetTheme]}>
+    <ThemeProvider theme={theme[currentTheme]}>
       <Container>
         <WeatherCard>
-          <Location>台北市</Location>
-            <Description>多雲時晴</Description>
+          <Location>{currentWeather.locationName}</Location>
+            <Description>{currentWeather.description}</Description>
             <CurrentWeather>
               <Temperature>
-                23 <Celsius>°C</Celsius>
+                {Math.round(currentWeather.temperature)} <Celsius>°C</Celsius>
               </Temperature>
               <DayCloudy />
             </CurrentWeather>
             <AirFlow>
-              <AirFlowIcon /> 23 m/h
+              <AirFlowIcon /> {currentWeather.windSpeed} m/h
             </AirFlow>
             <Rain>
-              <RainIcon /> 48%
+              <RainIcon /> {currentWeather.rainPossibility}%
             </Rain>
-            <Refresh />
+            <Refresh>
+            最後觀測時間：
+            {new Intl.DateTimeFormat('zh-TW', {
+              hour: 'numeric',
+              minute: 'numeric',
+            }).format(dayjs(currentWeather.observationTime))}{' '}
+            <RefreshIcon />
+          </Refresh>
           </WeatherCard>
       </Container>
     </ThemeProvider>
