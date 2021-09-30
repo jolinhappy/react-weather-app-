@@ -135,16 +135,19 @@ const Refresh = styled.div`
   `
 const AUTHORIZATION_KEY = 'CWB-1C47322D-578A-4E28-8809-8436255ACD97';
 const LOCATION_NAME = '臺北';
+const LOCATION_NAME_FORECAST = '臺北市'
 
 function App() {
   const [currentTheme, setCurrentTheme] = useState('light');
-  const [currentWeather, setCurrentWeather] = useState({
-    locationName: '臺北',
-    description: '多雲時晴',
-    windSpeed: 1.1,
-    temperature: 22.9,
-    rainPossibility: 48.3,
-    observationTime: '2020-1201 22:00:00',
+  const [weatherElement, setWeatherElement] = useState({
+    locationName: '',
+    description: '',
+    windSpeed: 0,
+    temperature: 0,
+    rainPossibility: 0,
+    observationTime: '0',
+    comfortability: '0',
+    weatherCode: 0,
     isLoading: true,
   });
   const {
@@ -154,15 +157,16 @@ function App() {
     temperature,
     rainPossibility,
     observationTime,
+    comfortability,
     isLoading,
-  } = currentWeather
+  } = weatherElement;
   const fetchCurrentWeather = () => {
     fetch(
       `https://opendata.cwb.gov.tw/api/v1/rest/datastore/O-A0003-001?Authorization=${AUTHORIZATION_KEY}&locationName=${LOCATION_NAME}`
     )
     .then((response) => response.json())
     .then((data) => {
-      setCurrentWeather((prevState) => ({
+      setWeatherElement((prevState) => ({
         ...prevState,
         isLoading: true
       }))
@@ -179,26 +183,63 @@ function App() {
         }, {}
       )
       // 把整理好的物件資料帶入setSomthing裡面
-      setCurrentWeather({
-        observationTime: locationData.time.obsTime,
-        locationName: locationData.locationName,
-        temperature: weatherElements.TEMP,
-        windSpeed: weatherElements.WDSD,
-        description: '多雲時晴',
-        rainPossibility: 60,
-        isLoading: false
-      });
+      setWeatherElement((prevState) => (
+        {
+          ...prevState,
+          observationTime: locationData.time.obsTime,
+          locationName: locationData.locationName,
+          temperature: weatherElements.TEMP,
+          windSpeed: weatherElements.WDSD,
+          isLoading: false
+        }
+      ));
+    })
+  }
+  const fetchWeatherForecast = () => {
+    fetch(
+      `https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=${AUTHORIZATION_KEY}&locationName=${LOCATION_NAME_FORECAST}`
+    )
+    .then((response) => response.json())
+    .then((data) => {
+      // setWeatherElement((prevState) => ({
+      //   ...prevState,
+      //   isLoading: true
+      // }))
+      const locationData = data.records.location[0];
+      const weatherElements = locationData.weatherElement.reduce((neededElements, item) => {
+        // 第一個參數是最後被整理完成的新物件，因為initialValue設定為{}，所以這裡的第一個參數代表物件
+        // 第二個參數是現在比對中的參數(遍歷)
+        if (['Wx', "PoP", 'CI'].includes(item.elementName)) {
+          // 如果符合條件，就塞進neededElement這個物件
+          // 用對應的WDSD和TEMP當作KEY，對應的value當作值塞入物件(下方這句)
+          neededElements[item.elementName] = item.time[0].parameter;
+        }
+          return neededElements
+        }, {}
+      )
+      
+      // 把整理好的物件資料帶入setSomthing裡面
+      setWeatherElement((prevState) => (
+        {
+          ...prevState,
+          description: weatherElements.Wx.parameterName,
+          weatherCode: weatherElements.Wx.parameterValue,
+          rainPossibility: weatherElements.PoP.parameterName,
+          comfortability: weatherElements.CI.parameterName,
+        }
+      ));
     })
   }
   useEffect(() => {
     fetchCurrentWeather();
+    fetchWeatherForecast();
   }, [])
   return (
     <ThemeProvider theme={theme[currentTheme]}>
       <Container>
         <WeatherCard>
-          <Location>{currentWeather.locationName}</Location>
-            <Description>{currentWeather.description}</Description>
+          <Location>{locationName}</Location>
+            <Description>{description} {comfortability}</Description>
             <CurrentWeather>
               <Temperature>
                 {Math.round(temperature)} <Celsius>°C</Celsius>
@@ -211,7 +252,10 @@ function App() {
             <Rain>
               <RainIcon /> {rainPossibility}%
             </Rain>
-            <Refresh onClick={fetchCurrentWeather} isLoading={isLoading} >
+            <Refresh onClick={ () => {
+              fetchCurrentWeather()
+              fetchWeatherForecast()
+            }} isLoading={isLoading} >
             最後觀測時間：
             {new Intl.DateTimeFormat('zh-TW', {
               hour: 'numeric',
